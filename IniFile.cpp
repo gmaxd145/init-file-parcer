@@ -17,31 +17,27 @@ public:
         std::getline(file, fileLine);
         while(!file.eof())
         {
-            auto sectionOpenBracket = std::find(fileLine.begin(), fileLine.end(), '[');
-            auto sectionCloseBracket = std::find(fileLine.begin(), fileLine.end(), ']');
-            if (sectionOpenBracket != fileLine.end() && sectionCloseBracket != fileLine.end())
+            auto sectionOpenBracket = fileLine.find('[');
+            auto sectionCloseBracket = fileLine.find(']');
+            if (sectionOpenBracket != std::string::npos && sectionCloseBracket != std::string::npos)
             {
+                std::string sectionName = fileLine.substr(sectionOpenBracket + 1, sectionCloseBracket - 1);
                 std::map<std::string, std::string> sectionData;
-                std::string sectionName;
-                std::copy(sectionOpenBracket, sectionCloseBracket + 2, std::back_inserter(sectionName));
-
                 while (!file.eof())
                 {
                     std::getline(file, fileLine);
-                    if (std::find(fileLine.begin(), fileLine.end(), '[') != fileLine.end())
+                    if (fileLine.find('[') != std::string::npos)
                     {
                         _data.insert({sectionName, sectionData});
                         break;
                     }
-                    auto equalSign = std::find(fileLine.begin(), fileLine.end(), '=');
-                    if (equalSign == fileLine.end())
+                    auto equalSign = fileLine.find('=');
+                    if (equalSign == std::string::npos)
                     {
                         continue;
                     }
-                    std::string key;
-                    std::string value;
-                    std::copy(fileLine.begin(), equalSign, std::back_inserter(key));
-                    std::copy(equalSign + 1, fileLine.end(), std::back_inserter(value));
+                    std::string key = fileLine.substr(0, equalSign);
+                    std::string value = fileLine.substr(equalSign + 1, fileLine.length());
                     sectionData.insert({key, value});
                 }
                 _data.insert({sectionName, sectionData});
@@ -59,7 +55,15 @@ public:
      * Определить для std::string, int, float, bool
      */
 	template<typename T>
-	T read(const std::string &section, const std::string &key, T defaultValue = T{}) const;
+	T read(const std::string &section, const std::string &key, T defaultValue = T{}) const
+    {
+       auto sectionIt = _data.find(section);
+       if (sectionIt == _data.end())
+       {
+           throw std::runtime_error("No section " + section + " in file.");
+       }
+//       (*sectionIt).second.find(key);
+    }
     /**
      * В ключ key из секции section 
      * записывает значение value
