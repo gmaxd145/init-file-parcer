@@ -1,6 +1,6 @@
 #include "IniFile.cpp"
 #include <iostream>
-#include <assert.h>
+#include <cassert>
 
 /** config.ini - input
 [general]
