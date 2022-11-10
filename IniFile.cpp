@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <fstream>
+#include <sstream>
 
 class IniFile {
 public:
@@ -49,7 +50,7 @@ public:
     {
         save();
     }
-	
+
 	void save() const
     {
         std::ofstream file(_path);
@@ -66,24 +67,53 @@ public:
             }
         }
     }
-	
-    /**
+
+    /*
      * Считывает из секции section
      * значение ключа key
      * Если не удалось считать - возвращает default value
-     * 
+     *
      * Определить для std::string, int, float, bool
      */
-	template<typename T>
-	T read(const std::string &section, const std::string &key, T defaultValue = T{}) const;
+    template<typename T>
+    T read(const std::string& section, const std::string& key, const T defaultValue = T{}) const
+    {
+        if (!keyExists(section, key))
+        {
+            return defaultValue;
+        }
+        std::stringstream ss(_data.at(section).at(key));
+        T returnValue;
+        ss >> returnValue;
+        return returnValue;
+    }
+
     /**
      * В ключ key из секции section 
-     * записывает значение value
+     * записывает значение ss
      *
      * Определить для std::string, int, float, bool
      */
 	template<typename T>
-	void write(const std::string &section, const std::string &key, T value);
+	void write(const std::string &section, const std::string &key, T value)
+    {
+        std::stringstream ss;
+        ss << value;
+        if (keyExists(section, key))
+        {
+            _data.at(section).at(key) = ss.str();
+        }
+        else if (sectionExists(section))
+        {
+            _data.at(section).insert({key, ss.str()});
+        }
+        else
+        {
+            std::map<std::string, std::string> sectionData;
+            sectionData.insert({key, ss.str()});
+            _data.insert({section, sectionData});
+        }
+    }
 
     /**
      * Проверяет, существует ли секция section
@@ -98,10 +128,7 @@ public:
      */
     bool keyExists(const std::string &section, const std::string &key) const
     {
-        if (sectionExists(section))
-        {
-            return _data.at(section).find(key) != _data.at(section).end();
-        }
+        return (sectionExists(section) && _data.at(section).find(key) != _data.at(section).end());
     }
 
     /**
@@ -134,6 +161,8 @@ public:
     }
 
 private:
+    std::vector<std::string> boolPossibleValues= {"true", "True", "TRUE", "on", "On", "ON", "yes", "Yes", "YES", "y",
+                                                  "Y", "1"};
     std::map<
             std::string,
             std::map<std::string, std::string>
@@ -141,5 +170,37 @@ private:
     const std::string _path;
 };
 
-// true -  true, True, TRUE, on, On, ON, yes, Yes, YES, y, Y, 1
-// false - остальные
+template<>
+bool IniFile::read(const std::string &section, const std::string &key, const bool defaultValue) const
+{
+    return keyExists(section, key) && (std::find(boolPossibleValues.begin(), boolPossibleValues.end(),
+                                                    _data.at(section).at(key)) != boolPossibleValues.end());
+}
+
+template<>
+std::string IniFile::read(const std::string &section, const std::string &key, const std::string defaultValue) const
+{
+    return keyExists(section, key) ? _data.at(section).at(key) : defaultValue;
+}
+
+template<>
+void IniFile::write(const std::string &section, const std::string &key, bool value)
+{
+    std::stringstream ss;
+    ss << value;
+    std::string buf = ss.str() == "1" ? "true" : "false";
+    if (keyExists(section, key))
+    {
+        _data.at(section).at(key) = buf;
+    }
+    else if (sectionExists(section))
+    {
+        _data.at(section).insert({key, buf });
+    }
+    else
+    {
+        std::map<std::string, std::string> sectionData;
+        sectionData.insert({key, buf});
+        _data.insert({section, sectionData});
+    }
+}
